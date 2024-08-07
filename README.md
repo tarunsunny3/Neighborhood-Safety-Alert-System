@@ -24,19 +24,17 @@ The **Neighborhood Alert System** is a sophisticated and scalable application de
 
 - **Real-Time Alerts:** Receive instant notifications based on geolocation and user preferences.
 - **Scalability:** Horizontally scalable architecture using Kafka and microservices.
-- **User Preferences:** Customizable alert radius and notification settings.
 - **Security:** Secure authentication using JWT tokens with RBAC.
 - **WebSockets:** Efficient real-time updates without page refreshes.
 
 ## Architecture
 
-![Architecture Diagram](path_to_architecture_diagram.png)
+![Architecture Diagram](neighborhood-architecture.drawio.png)
 
 The system follows a microservices architecture, ensuring modularity, maintainability, and scalability. Key components include:
 
 - **Auth Service:** Manages authentication and authorization using JWT tokens.
 - **Notification Service:** Consumes Kafka events and sends notifications based on user preferences.
-- **User Service:** Manages user profiles and preferences.
 - **WebSocket Service:** Handles real-time communication for live updates.
 - **Eureka Server:** Service discovery for microservices.
 - **API Gateway:** Centralized entry point for routing and managing incoming requests.
@@ -61,25 +59,15 @@ The system follows a microservices architecture, ensuring modularity, maintainab
 - **Technologies:** Spring Security, JWT.
 - **Endpoints:**
   - `/auth/login`
-  - `/auth/register`
-  - `/auth/refresh`
+  - `/auth/signup`
 
-### Notification Service
+### Incident Service
 
-- **Purpose:** Listens to Kafka topics and sends notifications based on user preferences.
+- **Purpose:** Manages incident reporting and sends Kafka messages for the Notification service to consume.
 - **Technologies:** Spring Kafka, Geolocation API.
 - **Endpoints:**
-  - `/notifications/subscribe`
-  - `/notifications/unsubscribe`
-
-
-### User Service
-
-- **Purpose:** Manages user profiles and preferences.
-- **Technologies:** Spring Data JPA, PostgreSQL.
-- **Endpoints:**
-  - `/users/{id}`
-  - `/users/{id}/preferences`
+  - `/incident/all`
+  - `/incident/report`
 
 ### Eureka Server
 
@@ -105,9 +93,9 @@ The Neighborhood Alert System is designed with scalability in mind:
 ## Design Patterns
 
 - **Microservices:** Modular design promoting independence and scalability.
+- **Database Per Service:** This pattern is suitable for this application since we have geospatial data for Incident service so, PostGIS has been used and for simple User service we used PostgreSQL DB.
 - **Event-Driven Architecture:** Kafka for asynchronous communication between services.
 - **Repository Pattern:** Abstracts data access logic in the User Service.
-- **Factory Pattern:** Used for creating complex objects in the Notification Service.
 - **Strategy Pattern:** Implements various notification strategies based on user preferences.
 
 ## Setup and Installation

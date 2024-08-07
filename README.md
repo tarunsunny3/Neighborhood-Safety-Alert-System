@@ -34,6 +34,7 @@ The **Neighborhood Alert System** is a sophisticated and scalable application de
 The system follows a microservices architecture, ensuring modularity, maintainability, and scalability. Key components include:
 
 - **Auth Service:** Manages authentication and authorization using JWT tokens.
+- **Incident Service:** Manages incident reporting and sending asynchronous events to Notification service via Kafka.
 - **Notification Service:** Consumes Kafka events and sends notifications based on user preferences.
 - **WebSocket Service:** Handles real-time communication for live updates.
 - **Eureka Server:** Service discovery for microservices.

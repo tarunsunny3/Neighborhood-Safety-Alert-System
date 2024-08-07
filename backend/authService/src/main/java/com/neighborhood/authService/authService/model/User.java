@@ -1,37 +1,54 @@
 package com.neighborhood.authService.authService.model;
 
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.neighborhood.authService.authService.model.enums.Role;
 import jakarta.persistence.*;
+import lombok.*;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.Collection;
 import java.util.Set;
+import java.util.stream.Collectors;
 
-
-
-@Entity
-@Table(name = "users")
 @Getter
 @Setter
+@Entity
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
+@ToString
+@Builder
+@Table(name = "users")
+public class User implements UserDetails {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE)
     private Long id;
 
-    @Column(name = "username", nullable = false, unique = true)
+    @Column(unique = true)
     private String username;
-
-    @Column(name = "password", nullable = false)
     private String password;
+    private String name;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "users_roles",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id"))
+    @ElementCollection(fetch = FetchType.EAGER)
+    @Enumerated(EnumType.STRING)
     private Set<Role> roles;
 
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return roles.stream()
+                .map(role -> new SimpleGrantedAuthority("ROLE_"+role.name()))
+                .collect(Collectors.toSet());
+    }
+
+    @Override
+    public String getPassword() {
+        return this.password;
+    }
+
+    @Override
+    public String getUsername() {
+        return this.username;
+    }
 }

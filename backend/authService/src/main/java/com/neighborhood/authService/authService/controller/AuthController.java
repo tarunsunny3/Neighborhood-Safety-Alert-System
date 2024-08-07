@@ -1,51 +1,67 @@
 package com.neighborhood.authService.authService.controller;
 
 
-import org.springframework.web.bind.annotation.GetMapping;
+import com.neighborhood.authService.authService.dto.*;
+import com.neighborhood.authService.authService.exceptions.InvalidRoleException;
+import com.neighborhood.authService.authService.model.enums.Role;
+import com.neighborhood.authService.authService.service.AuthService;
+import com.neighborhood.authService.authService.service.UserService;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.neighborhood.authService.authService.dto.JwtRequest;
-import com.neighborhood.authService.authService.dto.JwtResponse;
-import com.neighborhood.authService.authService.service.JwtUserDetailsService;
-import com.neighborhood.authService.authService.util.JwtTokenUtil;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.*;
 
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 @RestController
-@CrossOrigin
+@RequestMapping("/auth")
+@RequiredArgsConstructor
+@Slf4j
 public class AuthController {
 
-    @Autowired
-    private AuthenticationManager authenticationManager;
+    private final UserService userService;
+    private final AuthService authService;
 
-    @Autowired
-    private JwtTokenUtil jwtTokenUtil;
+    @Value("${deploy.env}")
+    private String deployEnv;
 
-    @Autowired
-    private JwtUserDetailsService userDetailsService;
+    @PostMapping("/signup")
+    public ResponseEntity<UserDTO> signUp(@RequestBody SignupDTO signupDTO) {
+        for (Role role : signupDTO.getRoles()) {
+            log.debug("Role is {}", role.name());
+            if (!isValidRole(role.name())) {
 
-    @PostMapping("/authenticate")
-    public ResponseEntity<?> createAuthenticationToken(@RequestBody JwtRequest authenticationRequest) throws Exception {
+                throw new InvalidRoleException("Invalid role: " + role.name());
+            }
+        }
 
-        authenticate(authenticationRequest.getUsername(), authenticationRequest.getPassword());
-
-        final UserDetails userDetails = userDetailsService.loadUserByUsername(authenticationRequest.getUsername());
-
-        final String token = jwtTokenUtil.generateToken(userDetails);
-
-        return ResponseEntity.ok(new JwtResponse(token));
+        UserDTO userDto = userService.signUp(signupDTO);
+        return ResponseEntity.ok(userDto);
     }
 
-    private void authenticate(String username, String password) throws Exception {
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponseDTO> login(@RequestBody LoginDTO loginDto, HttpServletRequest request,
+                                                  HttpServletResponse response) {
+        LoginResponseDTO loginResponseDto = authService.login(loginDto);
+
+        Cookie cookie = new Cookie("accessToken", loginResponseDto.getAccessToken());
+        cookie.setHttpOnly(true);
+        cookie.setSecure("production".equals(deployEnv));
+        response.addCookie(cookie);
+
+        return ResponseEntity.ok(loginResponseDto);
+    }
+    private boolean isValidRole(String role) {
         try {
-            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, password));
-        } catch (Exception e) {
-            throw new Exception("INVALID_CREDENTIALS", e);
+            Role.valueOf(role.toUpperCase());
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
         }
     }
 }

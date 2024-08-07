@@ -19,6 +19,9 @@ public class IncidentService {
     @Autowired
     private KafkaTemplate<String, Object> kafkaTemplate;
 
+    public void reportIncident(Integer curr){
+        kafkaTemplate.send("incident-topic", "message " + curr);
+    }
     public void reportIncident(IncidentDTO incidentDTO) {
         Incident incident = new Incident();
         incident.setTitle(incidentDTO.getTitle());

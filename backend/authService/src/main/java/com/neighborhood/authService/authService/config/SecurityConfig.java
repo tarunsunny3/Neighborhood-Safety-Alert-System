@@ -1,69 +1,58 @@
 package com.neighborhood.authService.authService.config;
 
-import com.neighborhood.authService.authService.service.JwtUserDetailsService;
-import com.neighborhood.authService.authService.util.JwtTokenUtil;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-//import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
-import org.springframework.security.config.annotation.authentication.configurers.userdetails.UserDetailsServiceConfigurer;
-//import org.springframework.security.config.annotation.authentication.configurers.UserDetailsServiceConfigurer;
 
+import static com.neighborhood.authService.authService.model.enums.Role.ADMIN;
+import static com.neighborhood.authService.authService.model.enums.Role.RESPONDER;
+//import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
+
+//import org.springframework.security.config.annotation.authentication.configurers.UserDetailsServiceConfigurer;
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
 
-    @Autowired
-    private JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final JwtAuthFilter jwtAuthFilter;
 
-    @Autowired
-    private JwtUserDetailsService jwtUserDetailsService;
-
-    @Autowired
-    private JwtRequestFilter jwtRequestFilter;
+    private static final String[] publicRoutes = {
+            "/error", "/auth/**"
+    };
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(AbstractHttpConfigurer::disable)  // Disable CSRF for stateless APIs
-                .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/authenticate").permitAll()  // Allow access to authentication endpoint
-                        .anyRequest().authenticated()  // Require authentication for all other requests
-                )
-                .exceptionHandling(exception -> exception
-                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)  // Custom entry point for unauthorized access
-                )
-                .sessionManagement(sess -> sess
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)  // Stateless sessions
-                );
+    SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
+        httpSecurity
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(publicRoutes).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/posts/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/posts/**")
+                        .hasAnyRole(ADMIN.name(), RESPONDER.name())
+                        .anyRequest().authenticated())
+                .csrf(csrfConfig -> csrfConfig.disable())
+                .sessionManagement(sessionConfig -> sessionConfig
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
-        http.addFilterBefore(jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);  // Add JWT filter
-
-        return http.build();
+        return httpSecurity.build();
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
-        AuthenticationConfiguration authenticationConfiguration = http.getSharedObject(AuthenticationConfiguration.class);
-        return authenticationConfiguration.getAuthenticationManager();
+    AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();  // Use BCrypt for password encoding
-    }
 }
